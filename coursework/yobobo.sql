@@ -14,6 +14,8 @@ DROP TABLE IF EXISTS `questionnaires`;
 DROP TABLE IF EXISTS `videos`;
 DROP TABLE IF EXISTS `b2b_clients`;
 DROP TABLE IF EXISTS `users`;
+DROP TABLE IF EXISTS `logs`;
+DROP PROCEDURE IF EXISTS `all_videos`;
 -- users пользователь мобильного приложения
 
 CREATE TABLE `users` (
@@ -216,6 +218,43 @@ CREATE TABLE `user_video_actions` (
 
 
 CREATE INDEX users_first_name_last_name_idx ON users (first_name, last_name);
+
+
+CREATE TABLE logs (
+  `table_name` VARCHAR(255) COMMENT 'Имя таблицы',
+  `record_id`  int(10) unsigned NOT NULL COMMENT 'Ссылка на id записи',
+  `record_name` VARCHAR(255) COMMENT 'Имя записи',
+  `created_at` datetime DEFAULT current_timestamp() COMMENT 'Время создания строки'
+) ENGINE=Archive;
+
+DELIMITER -
+
+CREATE TRIGGER users_insert_logs
+AFTER INSERT
+ON users FOR EACH ROW
+BEGIN
+        INSERT INTO logs(table_name, record_id, record_name)
+        VALUES('users',new.id,  CONCAT(new.first_name, ' ' , new.last_name));
+END-
+
+CREATE PROCEDURE all_videos ()
+BEGIN
+  SELECT * from videos;
+END-
+
+DELIMITER ;
+
+DROP VIEW IF EXISTS activated_users_gift_cards;
+CREATE VIEW activated_users_gift_cards
+	AS SELECT id, serial_number from user_gift_cards ugc where is_activated = true order by serial_number DESC;
+
+DROP VIEW IF EXISTS users_video_statustics;
+CREATE VIEW users_video_statustics
+	AS select u.last_name, uva.action_type, v.name, bbc.company_name
+		from user_video_actions uva
+			join users u on user_id = u.id
+			join videos v on video_id = v.id
+			join b2b_clients bbc on bbc.id = v.b2b_client_id;
 
 
 INSERT INTO `b2b_clients` (`id`, `email`, `encrypted_password`, `company_name`, `reset_password_token`, `reset_password_sent_at`, `remember_created_at`, `created_at`, `updated_at`) VALUES ('1', 'frami.lemuel@example.net', 'ba3eeae61b46065dcbc1c916eaecf202ee688e99', 'Kub, Hamill and Zemlak', '593c3ab0cebd67e5a32e4e39e5ca3321cc3cc847', '1985-05-24 22:11:50', '1973-01-09 15:15:12', '2013-10-13 09:29:43', '1999-10-22 01:05:29');
